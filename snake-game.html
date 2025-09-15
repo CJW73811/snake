@@ -18,6 +18,15 @@
             flex-direction: column;
             align-items: center;
             padding: 10px;
+            min-height: 100vh;
+        }
+        h1 {
+            margin: 20px 0 10px;
+            color: #333;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 20px;
         }
         /* 游戏容器 */
         .game-container {
@@ -25,12 +34,12 @@
             max-width: 100%;
             width: 800px;
             margin-bottom: 15px;
-        }
-        /* Canvas样式 */
-        #gameCanvas {
             border: 3px solid #333;
             border-radius: 8px;
             background-color: #fff;
+        }
+        /* Canvas样式 */
+        #gameCanvas {
             width: 100%;
             height: auto;
             display: block;
@@ -275,6 +284,15 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        /* 错误提示 */
+        .error-message {
+            color: #F44336;
+            padding: 15px;
+            background-color: #ffebee;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
         /* 媒体查询（移动端适配） */
         @media (max-width: 768px) {
             .top-bar {
@@ -301,6 +319,12 @@
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
+    <h1>snake</h1>
+    <p class="subtitle">A cool snake game</p>
+    
+    <!-- 错误提示 -->
+    <div class="error-message" id="errorMessage"></div>
+
     <!-- 加载指示器 -->
     <div class="loader" id="loader">
         <div class="spinner"></div>
@@ -461,12 +485,46 @@
         };
 
         // 页面加载完成后初始化
-        window.onload = async function() {
-            initGame();
-            // 隐藏加载指示器
-            setTimeout(() => {
+        window.onload = function() {
+            try {
+                // 显示错误信息的函数
+                function showError(message) {
+                    const errorElem = document.getElementById('errorMessage');
+                    errorElem.textContent = message;
+                    errorElem.style.display = 'block';
+                    document.getElementById('loader').style.display = 'none';
+                }
+
+                // 检查Canvas支持
+                const canvas = document.getElementById('gameCanvas');
+                if (!canvas.getContext) {
+                    showError('您的浏览器不支持Canvas，无法运行游戏');
+                    return;
+                }
+
+                // 检查外部库加载
+                if (typeof QRCode === 'undefined') {
+                    showError('二维码生成库加载失败，请刷新页面重试');
+                    return;
+                }
+                
+                if (typeof html2canvas === 'undefined') {
+                    console.warn('海报生成库加载失败，分享功能可能无法使用');
+                }
+
+                // 初始化游戏
+                initGame();
+                
+                // 隐藏加载指示器
+                setTimeout(() => {
+                    document.getElementById('loader').style.display = 'none';
+                }, 500);
+            } catch (error) {
+                console.error('游戏初始化失败:', error);
+                document.getElementById('errorMessage').textContent = '游戏加载失败: ' + error.message;
+                document.getElementById('errorMessage').style.display = 'block';
                 document.getElementById('loader').style.display = 'none';
-            }, 500);
+            }
         };
 
         // 初始化游戏
@@ -707,6 +765,8 @@
 
         // 绘制游戏画面
         function drawGame() {
+            if (!game.ctx) return;
+            
             // 清空画布
             game.ctx.clearRect(0, 0, game.width, game.height);
 
@@ -730,7 +790,7 @@
 
         // 绘制边界
         function drawBorder() {
-            if (game.borderSize <= 0) return;
+            if (game.borderSize <= 0 || !game.ctx) return;
 
             game.ctx.fillStyle = 'rgba(244, 67, 54, 0.3)';
             // 上边界
@@ -745,7 +805,7 @@
 
         // 绘制障碍物
         function drawObstacle() {
-            if (!game.obstacle.x || !game.obstacle.y) return;
+            if (!game.obstacle.x || !game.obstacle.y || !game.ctx) return;
 
             game.ctx.fillStyle = '#666';
             game.ctx.fillRect(game.obstacle.x, game.obstacle.y, game.gridSize, game.gridSize);
@@ -761,6 +821,8 @@
 
         // 绘制食物
         function drawFood() {
+            if (!game.ctx) return;
+            
             const skin = game.skinConfig[game.skin];
             // 普通食物颜色
             let foodColor = skin.body;
@@ -791,6 +853,8 @@
 
         // 绘制蛇
         function drawSnake() {
+            if (!game.ctx) return;
+            
             const skin = game.skinConfig[game.skin];
             game.snake.forEach((segment, index) => {
                 // 蛇头颜色
@@ -1108,21 +1172,23 @@
                 const previewElem = document.getElementById(`preview${skinKey.charAt(0).toUpperCase() + skinKey.slice(1)}`);
                 if (!previewElem) return;
 
-                const previewCtx = previewElem.getContext('2d') || (() => {
-                    const canvas = document.createElement('canvas');
+                // 为皮肤预览创建canvas
+                let canvas = previewElem.querySelector('canvas');
+                if (!canvas) {
+                    canvas = document.createElement('canvas');
                     canvas.width = previewElem.offsetWidth;
                     canvas.height = previewElem.offsetHeight;
                     previewElem.appendChild(canvas);
-                    return canvas.getContext('2d');
-                })();
+                }
+                const previewCtx = canvas.getContext('2d');
 
                 const skin = game.skinConfig[skinKey];
                 const gridSize = 15;
-                const startX = (previewElem.offsetWidth - 3 * gridSize) / 2;
-                const startY = (previewElem.offsetHeight - gridSize) / 2;
+                const startX = (canvas.width - 3 * gridSize) / 2;
+                const startY = (canvas.height - gridSize) / 2;
 
                 // 绘制预览蛇
-                previewCtx.clearRect(0, 0, previewElem.offsetWidth, previewElem.offsetHeight);
+                previewCtx.clearRect(0, 0, canvas.width, canvas.height);
                 // 蛇头
                 previewCtx.fillStyle = skin.head;
                 previewCtx.fillRect(startX + 2 * gridSize, startY, gridSize, gridSize);
@@ -1148,8 +1214,10 @@
                     light: '#fff'
                 }
             }, (error) => {
-                if (error) console.error(error);
-                else {
+                if (error) {
+                    console.error('二维码生成失败:', error);
+                    qrcodeContainer.innerHTML = '<p>二维码生成失败</p>';
+                } else {
                     // 添加二维码中心LOGO
                     const logo = document.createElement('div');
                     logo.style.position = 'absolute';
@@ -1180,16 +1248,6 @@
                     ring.style.borderRadius = '50%';
                     ring.style.animation = 'rotate 10s linear infinite';
                     qrcodeContainer.appendChild(ring);
-
-                    // 添加动画样式
-                    const style = document.createElement('style');
-                    style.textContent = `
-                        @keyframes rotate {
-                            0% { transform: rotate(0deg); }
-                            100% { transform: rotate(360deg); }
-                        }
-                    `;
-                    document.head.appendChild(style);
                 }
             });
         }
@@ -1221,225 +1279,3 @@
             const miniSnake = [
                 { x: posterCanvas.width/2 + miniGrid, y: gameScreenshotY + gameScreenshotHeight/2, isHead: true },
                 { x: posterCanvas.width/2, y: gameScreenshotY + gameScreenshotHeight/2 },
-                { x: posterCanvas.width/2 - miniGrid, y: gameScreenshotY + gameScreenshotHeight/2, isTail: true }
-            ];
-            miniSnake.forEach(seg => {
-                if (seg.isHead) posterCtx.fillStyle = skin.head;
-                else if (seg.isTail) posterCtx.fillStyle = skin.tail;
-                else posterCtx.fillStyle = skin.body;
-                posterCtx.fillRect(seg.x - miniGrid/2, seg.y - miniGrid/2, miniGrid, miniGrid);
-            });
-
-            // 绘制分数
-            posterCtx.fillStyle = '#333';
-            posterCtx.font = '16px Arial';
-            posterCtx.textAlign = 'left';
-            posterCtx.fillText(`我的分数：${game.score}`, 30, gameScreenshotY + gameScreenshotHeight + 30);
-            posterCtx.fillText(`使用皮肤：${skin.name}`, 30, gameScreenshotY + gameScreenshotHeight + 60);
-
-            // 绘制二维码（简化版）
-            const qrcodeX = posterCanvas.width - 100;
-            const qrcodeY = gameScreenshotY + gameScreenshotHeight + 10;
-            posterCtx.fillStyle = '#fff';
-            posterCtx.fillRect(qrcodeX, qrcodeY, 80, 80);
-            // 绘制简化二维码图案
-            posterCtx.fillStyle = '#333';
-            for (let i = 0; i < 5; i++) {
-                for (let j = 0; j < 5; j++) {
-                    if ((i === 0 || i === 4 || j === 0 || j === 4) || (i === 2 && j === 2)) {
-                        posterCtx.fillRect(qrcodeX + i*16, qrcodeY + j*16, 12, 12);
-                    }
-                }
-            }
-
-            // 绘制扫码提示
-            posterCtx.fillStyle = '#666';
-            posterCtx.font = '12px Arial';
-            posterCtx.textAlign = 'center';
-            posterCtx.fillText('扫码挑战我的高分', posterCanvas.width / 2, posterCanvas.height - 20);
-        }
-
-        // 显示新手引导
-        function showGuideOverlay() {
-            const guideOverlay = document.getElementById('guideOverlay');
-            guideOverlay.style.display = 'flex';
-            game.isPaused = true;
-
-            document.getElementById('closeGuideBtn').addEventListener('click', () => {
-                guideOverlay.style.display = 'none';
-                game.isPaused = false;
-                // 标记引导已显示
-                game.showGuide = false;
-                saveStorageData();
-            });
-        }
-
-        // 绑定事件监听
-        function bindEvents() {
-            // 键盘控制
-            document.addEventListener('keydown', (e) => {
-                if (game.isGameOver) return;
-
-                switch (e.key) {
-                    case 'ArrowUp':
-                    case 'w':
-                    case 'W':
-                        if (game.direction !== 'down') game.nextDirection = 'up';
-                        break;
-                    case 'ArrowDown':
-                    case 's':
-                    case 'S':
-                        if (game.direction !== 'up') game.nextDirection = 'down';
-                        break;
-                    case 'ArrowLeft':
-                    case 'a':
-                    case 'A':
-                        if (game.direction !== 'right') game.nextDirection = 'left';
-                        break;
-                    case 'ArrowRight':
-                    case 'd':
-                    case 'D':
-                        if (game.direction !== 'left') game.nextDirection = 'right';
-                        break;
-                    case ' ': // 空格键暂停/继续
-                        togglePause();
-                        break;
-                }
-            });
-
-            // 触摸控制
-            game.canvas.addEventListener('touchstart', (e) => {
-                if (game.isGameOver || game.isPaused) return;
-                const touch = e.touches[0];
-                game.touchStartX = touch.clientX;
-                game.touchStartY = touch.clientY;
-            });
-
-            game.canvas.addEventListener('touchend', (e) => {
-                if (game.isGameOver || game.isPaused) return;
-                const touch = e.changedTouches[0];
-                const endX = touch.clientX;
-                const endY = touch.clientY;
-
-                // 计算滑动方向
-                const diffX = endX - game.touchStartX;
-                const diffY = endY - game.touchStartY;
-                const threshold = 20; // 滑动阈值
-
-                if (Math.abs(diffX) > Math.abs(diffY)) {
-                    // 左右滑动
-                    if (diffX > threshold && game.direction !== 'left') {
-                        game.nextDirection = 'right';
-                    } else if (diffX < -threshold && game.direction !== 'right') {
-                        game.nextDirection = 'left';
-                    }
-                } else {
-                    // 上下滑动
-                    if (diffY > threshold && game.direction !== 'up') {
-                        game.nextDirection = 'down';
-                    } else if (diffY < -threshold && game.direction !== 'down') {
-                        game.nextDirection = 'up';
-                    }
-                }
-            });
-
-            // 暂停按钮
-            document.getElementById('pauseBtn').addEventListener('click', togglePause);
-
-            // 皮肤商店按钮
-            document.getElementById('skinBtn').addEventListener('click', () => {
-                document.getElementById('skinModal').style.display = 'flex';
-                game.isPaused = true;
-            });
-
-            // 关闭皮肤商店
-            document.getElementById('closeSkinBtn').addEventListener('click', () => {
-                document.getElementById('skinModal').style.display = 'none';
-                game.isPaused = false;
-            });
-
-            // 选择皮肤
-            document.querySelectorAll('.skin-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    document.querySelectorAll('.skin-item').forEach(i => i.classList.remove('selected'));
-                    item.classList.add('selected');
-                    game.skin = item.dataset.skin;
-                });
-            });
-
-            // 应用皮肤
-            document.getElementById('applySkinBtn').addEventListener('click', () => {
-                document.getElementById('skinModal').style.display = 'none';
-                game.isPaused = false;
-                saveStorageData();
-                drawGame();
-            });
-
-            // 二维码按钮
-            document.getElementById('qrcodeBtn').addEventListener('click', () => {
-                document.getElementById('qrcodeModal').style.display = 'flex';
-                game.isPaused = true;
-            });
-
-            // 关闭二维码
-            document.getElementById('closeQrcodeBtn').addEventListener('click', () => {
-                document.getElementById('qrcodeModal').style.display = 'none';
-                game.isPaused = false;
-            });
-
-            // 分享按钮
-            document.getElementById('shareBtn').addEventListener('click', () => {
-                if (game.isGameOver) return;
-                generateSharePoster();
-                document.getElementById('shareModal').style.display = 'flex';
-                game.isPaused = true;
-            });
-
-            // 关闭分享
-            document.getElementById('closeShareBtn').addEventListener('click', () => {
-                document.getElementById('shareModal').style.display = 'none';
-                game.isPaused = false;
-            });
-
-            // 难度选择
-            document.querySelectorAll('.diff-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const newDiff = parseInt(btn.dataset.diff);
-                    if (game.difficulty === newDiff) return;
-
-                    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    game.difficulty = newDiff;
-                    restartGame();
-                });
-            });
-
-            // 点击模态框外部关闭
-            document.querySelectorAll('.modal').forEach(modal => {
-                modal.addEventListener('click', (e) => {
-                    if (e.target === modal) {
-                        modal.style.display = 'none';
-                        game.isPaused = false;
-                    }
-                });
-            });
-        }
-
-        // 切换暂停/继续
-        function togglePause() {
-            if (game.isGameOver) return;
-
-            game.isPaused = !game.isPaused;
-            const pauseBtn = document.getElementById('pauseBtn');
-            if (game.isPaused) {
-                pauseBtn.textContent = '继续';
-                clearInterval(game.gameLoop);
-                clearInterval(game.borderShrinkInterval);
-            } else {
-                pauseBtn.textContent = '暂停';
-                startGameLoop();
-            }
-        }
-    </script>
-</body>
-</html>
