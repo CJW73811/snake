@@ -155,6 +155,45 @@
             padding: 10px;
             background-color: white;
         }
+        
+        /* 虚拟方向键样式 */
+        #virtualDirectionKeys {
+            display: none;
+            margin-top: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            #virtualDirectionKeys {
+                display: flex;
+                justify-content: center;
+                gap: 10px;
+            }
+        }
+        
+        .direction-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .direction-btn:active {
+            transform: scale(0.95);
+            background: #d1d5db;
+        }
+        
+        /* 音乐控制样式 */
+        .music-control {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
     </style>
 </head>
 <body class="bg-snake-bg min-h-screen flex flex-col items-center justify-center p-4 text-snake-text font-sans">
@@ -194,6 +233,9 @@
                 <button id="restartBtn" class="bg-snake-primary hover:bg-snake-secondary text-white px-4 py-2 rounded-lg shadow-md btn-bounce">
                     <i class="fa fa-refresh mr-1"></i> 重启
                 </button>
+                <button id="musicBtn" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg shadow-md btn-bounce music-control">
+                    <i class="fa fa-music mr-1"></i> 音乐
+                </button>
             </div>
         </div>
         
@@ -225,6 +267,24 @@
             
             <!-- 游戏画布 -->
             <canvas id="gameCanvas" class="w-full max-w-full mx-auto"></canvas>
+        </div>
+        
+        <!-- 虚拟方向键 (仅在手机上显示) -->
+        <div id="virtualDirectionKeys">
+            <button class="direction-btn" id="upBtn">
+                <i class="fa fa-arrow-up"></i>
+            </button>
+            <div class="flex">
+                <button class="direction-btn" id="leftBtn">
+                    <i class="fa fa-arrow-left"></i>
+                </button>
+                <button class="direction-btn" id="rightBtn">
+                    <i class="fa fa-arrow-right"></i>
+                </button>
+            </div>
+            <button class="direction-btn" id="downBtn">
+                <i class="fa fa-arrow-down"></i>
+            </button>
         </div>
         
         <!-- 难度选择 -->
@@ -353,7 +413,7 @@
                 <img id="qrcodeImage" src="" alt="微信扫码二维码">
             </div>
             
-            <p class="text-sm text-gray-500 mt-4">或者复制链接发送给好友: <br>https://cjw73811.github.io/snake/snake-game.html</p>
+            <p class="text-sm text-gray-500 mt-4">或者复制链接发送给好友: <br>  https://cjw73811.github.io/snake/snake-game.html  </p>
         </div>
     </div>
     
@@ -381,9 +441,9 @@
         let highScore = localStorage.getItem('snakeHighScore') || 0;
         let isGameOver = false;
         let isPaused = false;
-        let gridSize = 20; // 网格大小
-        let canvasSize;
         let gameStarted = false;
+        let musicPlaying = false;
+        let gameMusic;
         
         // 皮肤系统
         let currentSkin = 'classic';
@@ -443,9 +503,33 @@
         const applySkinBtn = document.getElementById('applySkinBtn');
         const skinPreviews = document.querySelectorAll('.skin-preview');
         const qrcodeImage = document.getElementById('qrcodeImage');
+        const musicBtn = document.getElementById('musicBtn');
+        const upBtn = document.getElementById('upBtn');
+        const downBtn = document.getElementById('downBtn');
+        const leftBtn = document.getElementById('leftBtn');
+        const rightBtn = document.getElementById('rightBtn');
         
         // 初始化高分
         highScoreElement.textContent = highScore;
+        
+        // 创建游戏音乐
+        function initMusic() {
+            gameMusic = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-game-level-music-224.mp3');
+            gameMusic.loop = true;
+            
+            // 音乐按钮点击事件
+            musicBtn.addEventListener('click', () => {
+                if (musicPlaying) {
+                    gameMusic.pause();
+                    musicPlaying = false;
+                    musicBtn.innerHTML = '<i class="fa fa-music mr-1"></i> 音乐';
+                } else {
+                    gameMusic.play();
+                    musicPlaying = true;
+                    musicBtn.innerHTML = '<i class="fa fa-music mr-1"></i> 关闭音乐';
+                }
+            });
+        }
         
         // 生成二维码
         qrcodeScript.onload = function() {
@@ -731,6 +815,11 @@
             pauseBtn.classList.remove('hidden');
             resumeBtn.classList.add('hidden');
             
+            // 如果音乐开启，开始播放
+            if (musicPlaying) {
+                gameMusic.play();
+            }
+            
             // 启动游戏循环
             gameInterval = setInterval(update, gameSpeed);
         }
@@ -838,6 +927,24 @@
             }
         }
         
+        // 虚拟方向键处理
+        function handleVirtualDirection(directionValue) {
+            if (!gameStarted || isGameOver) {
+                startGame();
+                return;
+            }
+            
+            // 防止180度转向
+            if ((direction === 'up' && directionValue === 'down') || 
+                (direction === 'down' && directionValue === 'up') || 
+                (direction === 'left' && directionValue === 'right') || 
+                (direction === 'right' && directionValue === 'left')) {
+                return;
+            }
+            
+            nextDirection = directionValue;
+        }
+        
         // 触摸控制 - 检测滑动方向
         let touchStartX = 0;
         let touchStartY = 0;
@@ -925,6 +1032,12 @@
             wechatModal.classList.remove('active');
         });
         
+        // 虚拟方向键事件
+        upBtn.addEventListener('click', () => handleVirtualDirection('up'));
+        downBtn.addEventListener('click', () => handleVirtualDirection('down'));
+        leftBtn.addEventListener('click', () => handleVirtualDirection('left'));
+        rightBtn.addEventListener('click', () => handleVirtualDirection('right'));
+        
         // 难度选择
         difficultyBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -978,6 +1091,9 @@
                 resumeGame();
             }
         });
+        
+        // 初始化音乐
+        initMusic();
         
         // 初始化游戏
         setupCanvas();
