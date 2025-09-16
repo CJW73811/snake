@@ -88,9 +88,9 @@
         }
         
         .loader {
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(74, 222, 128, 0.3);
+            width: 40px; /* 增大加载图标 */
+            height: 40px;
+            border: 5px solid rgba(74, 222, 128, 0.3);
             border-radius: 50%;
             border-top-color: #166534;
             animation: spin 1s ease-in-out infinite;
@@ -174,21 +174,74 @@
             margin-top: 10px;
         }
         
-        @media (max-width: 768px) {
+        /* 横屏支持 */
+        @media (max-width: 768px) and (orientation: landscape) {
+            body {
+                flex-direction: row;
+                overflow: auto;
+            }
+            
+            header {
+                display: none;
+            }
+            
+            main.game-container {
+                display: flex;
+                flex-direction: row;
+                max-width: none;
+                width: 100%;
+            }
+            
+            .game-content {
+                display: flex;
+                flex-direction: row;
+                width: 100%;
+            }
+            
+            .game-left-panel {
+                width: 40%;
+                padding-right: 10px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            }
+            
+            .game-right-panel {
+                width: 60%;
+            }
+            
+            #gameCanvas {
+                width: 100%;
+                height: auto;
+                max-height: 70vh;
+            }
+            
             #virtualDirectionKeys {
-                display: grid; /* 在手机上显示 */
-                grid-template-columns: repeat(3, 1fr); /* 使用1fr让按钮宽度自适应 */
+                display: none; /* 横屏时隐藏虚拟按键 */
+            }
+            
+            footer {
+                display: none;
+            }
+        }
+        
+        @media (max-width: 768px) and (orientation: portrait) {
+            #virtualDirectionKeys {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
                 grid-template-rows: repeat(3, auto);
                 gap: 10px;
                 justify-content: center;
                 align-items: center;
-                max-width: 200px; /* 限制方向键组的最大宽度 */
+                max-width: 200px;
                 margin-left: auto;
                 margin-right: auto;
             }
-            #virtualDirectionKeys > div { /* 占据空白的div */
-                visibility: hidden; /* 隐藏占据空白的div */
+            
+            #virtualDirectionKeys > div {
+                visibility: hidden;
             }
+            
             #virtualDirectionKeys #upBtn { grid-area: 1 / 2 / 2 / 3; }
             #virtualDirectionKeys #leftBtn { grid-area: 2 / 1 / 3 / 2; }
             #virtualDirectionKeys #rightBtn { grid-area: 2 / 3 / 3 / 4; }
@@ -196,7 +249,7 @@
         }
         
         .direction-btn {
-            width: 60px; /* 虚拟键固定大小 */
+            width: 60px;
             height: 60px;
             border-radius: 50%;
             background: #e5e7eb;
@@ -207,12 +260,33 @@
             cursor: pointer;
             transition: all 0.2s;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            -webkit-tap-highlight-color: transparent; /* 移除触摸高亮 */
         }
         
         .direction-btn:active {
             transform: scale(0.95);
             background: #d1d5db;
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        /* 加载界面优化 */
+        #loadingScreen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            gap: 15px;
+        }
+        
+        /* 游戏控制提示优化 */
+        .game-tips {
+            font-size: 0.9rem;
+            padding: 10px;
+        }
+        
+        .game-tips p {
+            margin-bottom: 5px;
         }
     </style>
 </head>
@@ -225,71 +299,102 @@
     
     <!-- 游戏容器 -->
     <main class="game-container w-full max-w-2xl">
-        <!-- 分数显示和功能按钮 -->
-        <div class="flex flex-wrap justify-between items-center mb-4 px-2 gap-2">
-            <div class="flex gap-4">
-                <div class="bg-white px-4 py-2 rounded-lg shadow-md">
-                    <span class="text-gray-600">分数: </span>
-                    <span id="score" class="font-bold text-snake-secondary">0</span>
+        <div class="game-content">
+            <!-- 分数显示和功能按钮 -->
+            <div class="game-left-panel">
+                <div class="flex flex-wrap justify-between items-center mb-4 px-2 gap-2">
+                    <div class="flex gap-4">
+                        <div class="bg-white px-4 py-2 rounded-lg shadow-md">
+                            <span class="text-gray-600">分数: </span>
+                            <span id="score" class="font-bold text-snake-secondary">0</span>
+                        </div>
+                        <div class="bg-white px-4 py-2 rounded-lg shadow-md">
+                            <span class="text-gray-600">最高分: </span>
+                            <span id="highScore" class="font-bold text-snake-secondary">0</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="skinBtn" class="bg-purple-100 hover:bg-purple-200 px-4 py-2 rounded-lg shadow-md btn-bounce">
+                            <i class="fa fa-shopping-bag mr-1"></i> 皮肤商店
+                        </button>
+                        <button id="wechatBtn" class="bg-green-100 hover:bg-green-200 px-4 py-2 rounded-lg shadow-md btn-bounce">
+                            <i class="fa fa-weixin mr-1"></i> 微信扫码玩
+                        </button>
+                        <button id="pauseBtn" class="bg-white hover:bg-gray-100 px-4 py-2 rounded-lg shadow-md btn-bounce hidden">
+                            <i class="fa fa-pause mr-1"></i> 暂停
+                        </button>
+                        <button id="resumeBtn" class="bg-white hover:bg-gray-100 px-4 py-2 rounded-lg shadow-md btn-bounce hidden">
+                            <i class="fa fa-play mr-1"></i> 继续
+                        </button>
+                        <button id="restartBtn" class="bg-snake-primary hover:bg-snake-secondary text-white px-4 py-2 rounded-lg shadow-md btn-bounce">
+                            <i class="fa fa-refresh mr-1"></i> 重启
+                        </button>
+                    </div>
                 </div>
-                <div class="bg-white px-4 py-2 rounded-lg shadow-md">
-                    <span class="text-gray-600">最高分: </span>
-                    <span id="highScore" class="font-bold text-snake-secondary">0</span>
+                
+                <!-- 难度选择 -->
+                <div class="mb-4 mt-4">
+                    <p class="text-center mb-2 font-medium">选择难度:</p>
+                    <div class="flex flex-wrap justify-center gap-2">
+                        <button class="difficulty-btn bg-green-100 hover:bg-green-200 px-4 py-2 rounded-lg shadow-sm btn-bounce active" data-speed="200">
+                            新手 (1星)
+                        </button>
+                        <button class="difficulty-btn bg-blue-100 hover:bg-blue-200 px-4 py-2 rounded-lg shadow-sm btn-bounce" data-speed="150">
+                            进阶 (2星)
+                        </button>
+                        <button class="difficulty-btn bg-yellow-100 hover:bg-yellow-200 px-4 py-2 rounded-lg shadow-sm btn-bounce" data-speed="100">
+                            高手 (3星)
+                        </button>
+                        <button class="difficulty-btn bg-red-100 hover:bg-red-200 px-4 py-2 rounded-lg shadow-sm btn-bounce" data-speed="70">
+                            极限 (4星)
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 游戏控制提示 -->
+                <div class="bg-white p-4 rounded-lg shadow-md game-tips">
+                    <h3 class="font-bold mb-2 text-center">游戏控制</h3>
+                    <div>
+                        <p><i class="fa fa-keyboard-o mr-1"></i> 方向键或WASD: 控制蛇移动</p>
+                        <p><i class="fa fa-space-shuttle mr-1"></i> 空格: 暂停/继续游戏</p>
+                        <p><i class="fa fa-refresh mr-1"></i> R键: 重新开始游戏</p>
+                        <p><i class="fa fa-info-circle mr-1"></i> 吃到食物得分，撞到墙壁或自己游戏结束</p>
+                    </div>
                 </div>
             </div>
-            <div class="flex gap-2">
-                <button id="skinBtn" class="bg-purple-100 hover:bg-purple-200 px-4 py-2 rounded-lg shadow-md btn-bounce">
-                    <i class="fa fa-shopping-bag mr-1"></i> 皮肤商店
-                </button>
-                <button id="wechatBtn" class="bg-green-100 hover:bg-green-200 px-4 py-2 rounded-lg shadow-md btn-bounce">
-                    <i class="fa fa-weixin mr-1"></i> 微信扫码玩
-                </button>
-                <button id="pauseBtn" class="bg-white hover:bg-gray-100 px-4 py-2 rounded-lg shadow-md btn-bounce hidden">
-                    <i class="fa fa-pause mr-1"></i> 暂停
-                </button>
-                <button id="resumeBtn" class="bg-white hover:bg-gray-100 px-4 py-2 rounded-lg shadow-md btn-bounce hidden">
-                    <i class="fa fa-play mr-1"></i> 继续
-                </button>
-                <button id="restartBtn" class="bg-snake-primary hover:bg-snake-secondary text-white px-4 py-2 rounded-lg shadow-md btn-bounce">
-                    <i class="fa fa-refresh mr-1"></i> 重启
-                </button>
+            
+            <!-- 游戏画布容器 -->
+            <div class="game-right-panel relative bg-white rounded-xl shadow-lg p-4 mb-4 overflow-hidden">
+                <!-- 加载状态 -->
+                <div id="loadingScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-white bg-opacity-90 z-10">
+                    <div class="loader mb-3"></div>
+                    <p class="text-lg font-medium">游戏加载中...</p>
+                </div>
+                
+                <!-- 游戏开始界面 -->
+                <div id="startScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-white z-10 hidden">
+                    <h2 class="text-2xl font-bold mb-6 text-snake-secondary">准备开始游戏!</h2>
+                    <button id="startBtn" class="bg-snake-primary hover:bg-snake-secondary text-white px-6 py-3 rounded-lg shadow-md text-lg btn-bounce">
+                        <i class="fa fa-play mr-2"></i>开始游戏
+                    </button>
+                </div>
+                
+                <!-- 游戏结束界面 -->
+                <div id="gameOverScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-white bg-opacity-95 z-10 hidden">
+                    <h2 class="text-2xl font-bold mb-2 text-red-500">游戏结束!</h2>
+                    <p class="mb-2">你的得分: <span id="finalScore" class="font-bold">0</span></p>
+                    <p class="mb-6">最高分: <span id="gameOverHighScore" class="font-bold">0</span></p>
+                    <button id="playAgainBtn" class="bg-snake-primary hover:bg-snake-secondary text-white px-6 py-3 rounded-lg shadow-md btn-bounce">
+                        <i class="fa fa-refresh mr-2"></i>再玩一次
+                    </button>
+                </div>
+                
+                <!-- 游戏画布 -->
+                <canvas id="gameCanvas" class="w-full max-w-full mx-auto"></canvas>
             </div>
         </div>
         
-        <!-- 游戏画布容器 -->
-        <div class="relative bg-white rounded-xl shadow-lg p-4 mb-4 overflow-hidden">
-            <!-- 加载状态 -->
-            <div id="loadingScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-white bg-opacity-90 z-10">
-                <div class="loader mb-3"></div>
-                <p>游戏加载中...</p>
-            </div>
-            
-            <!-- 游戏开始界面 -->
-            <div id="startScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-white z-10 hidden">
-                <h2 class="text-2xl font-bold mb-6 text-snake-secondary">准备开始游戏!</h2>
-                <button id="startBtn" class="bg-snake-primary hover:bg-snake-secondary text-white px-6 py-3 rounded-lg shadow-md text-lg btn-bounce">
-                    <i class="fa fa-play mr-2"></i>开始游戏
-                </button>
-            </div>
-            
-            <!-- 游戏结束界面 -->
-            <div id="gameOverScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-white bg-opacity-95 z-10 hidden">
-                <h2 class="text-2xl font-bold mb-2 text-red-500">游戏结束!</h2>
-                <p class="mb-2">你的得分: <span id="finalScore" class="font-bold">0</span></p>
-                <p class="mb-6">最高分: <span id="gameOverHighScore" class="font-bold">0</span></p>
-                <button id="playAgainBtn" class="bg-snake-primary hover:bg-snake-secondary text-white px-6 py-3 rounded-lg shadow-md btn-bounce">
-                    <i class="fa fa-refresh mr-2"></i>再玩一次
-                </button>
-            </div>
-            
-            <!-- 游戏画布 -->
-            <canvas id="gameCanvas" class="w-full max-w-full mx-auto"></canvas>
-        </div>
-        
-        <!-- 虚拟方向键 (仅在手机上显示) -->
-        <!-- 注意：这里的 `md:grid` 会导致在桌面端也显示。
-             正确的做法是默认隐藏，只在小屏时显示。
-             CSS 媒体查询已修正，此处保持html结构不变 -->
+        <!-- 虚拟方向键 (仅在手机上竖屏时显示) -->
         <div id="virtualDirectionKeys">
             <div></div>
             <button class="direction-btn" id="upBtn">
@@ -310,40 +415,6 @@
                 <i class="fa fa-arrow-down"></i>
             </button>
             <div></div>
-        </div>
-        
-        <!-- 难度选择 -->
-        <div class="mb-4 mt-4">
-            <p class="text-center mb-2 font-medium">选择难度:</p>
-            <div class="flex flex-wrap justify-center gap-2">
-                <button class="difficulty-btn bg-green-100 hover:bg-green-200 px-4 py-2 rounded-lg shadow-sm btn-bounce active" data-speed="150">
-                    新手 (1星)
-                </button>
-                <button class="difficulty-btn bg-blue-100 hover:bg-blue-200 px-4 py-2 rounded-lg shadow-sm btn-bounce" data-speed="100">
-                    进阶 (2星)
-                </button>
-                <button class="difficulty-btn bg-yellow-100 hover:bg-yellow-200 px-4 py-2 rounded-lg shadow-sm btn-bounce" data-speed="70">
-                    高手 (3星)
-                </button>
-                <button class="difficulty-btn bg-red-100 hover:bg-red-200 px-4 py-2 rounded-lg shadow-sm btn-bounce" data-speed="50">
-                    极限 (4星)
-                </button>
-            </div>
-        </div>
-        
-        <!-- 游戏控制提示 -->
-        <div class="bg-white p-4 rounded-lg shadow-md text-sm mt-4">
-            <h3 class="font-bold mb-2 text-center">游戏控制</h3>
-            <div class="grid grid-cols-2 gap-2">
-                <div>
-                    <p><i class="fa fa-keyboard-o mr-1"></i> 方向键或WASD: 控制蛇移动</p>
-                    <p><i class="fa fa-space-shuttle mr-1"></i> 空格: 暂停/继续游戏</p>
-                </div>
-                <div>
-                    <p><i class="fa fa-refresh mr-1"></i> R键: 重新开始游戏</p>
-                    <p><i class="fa fa-info-circle mr-1"></i> 吃到食物得分，撞到墙壁或自己游戏结束</p>
-                </div>
-            </div>
         </div>
     </main>
     
@@ -460,7 +531,7 @@
         let food = {};
         let direction = '';       // 当前蛇的移动方向
         let nextDirection = '';   // 下一个即将更新的蛇的移动方向 (用于处理快速输入)
-        let gameSpeed = 150;      // 游戏逻辑更新速度，毫秒
+        let gameSpeed = 200;      // 游戏逻辑更新速度，毫秒（默认更慢，适合手机）
         let animationFrameId;     // requestAnimationFrame ID
         let lastFrameTime = 0;    // 上一帧渲染时间
         let frameAccumulator = 0; // 累积时间，用于固定时间步长更新游戏逻辑
@@ -539,15 +610,24 @@
         // --- 设置画布大小和网格 ---
         function setupCanvas() {
             const containerWidth = canvas.parentElement.clientWidth;
-            canvasSize = Math.min(containerWidth, 600); // 最大600px，保持正方形
+            const containerHeight = canvas.parentElement.clientHeight;
+            
+            // 在手机上使用更小的网格，提高性能
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const gridCount = isMobile ? 15 : 20;
+            
+            canvasSize = Math.min(containerWidth, containerHeight, 600);
             canvas.width = canvasSize;
             canvas.height = canvasSize;
-            gridSize = canvasSize / 20; // 固定20个网格
+            gridSize = canvasSize / gridCount;
         }
         
         // --- 绘制网格背景 (只在画布尺寸改变时绘制一次，或作为CSS背景) ---
         // 为了简化，我们暂时还是在draw()中绘制，但如果性能仍有问题，这里是第一个优化点
         function drawGrid() {
+            // 在移动设备上不绘制网格以提高性能
+            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) return;
+            
             ctx.strokeStyle = 'rgba(74, 222, 128, 0.1)';
             ctx.lineWidth = 1;
             for (let y = 0; y <= canvasSize; y += gridSize) {
@@ -604,7 +684,7 @@
         
         // --- 生成食物 ---
         function generateFood() {
-            const maxGrid = (canvasSize / gridSize) - 1;
+            const maxGrid = Math.floor(canvasSize / gridSize) - 1;
             let newFood;
             do {
                 newFood = {
@@ -739,8 +819,20 @@
             
             snake.unshift(head); // 添加新头部
             
+            // 改进的食物检测 - 使用更宽松的碰撞检测
+            const foodRadius = gridSize / 2;
+            const headCenterX = head.x + gridSize / 2;
+            const headCenterY = head.y + gridSize / 2;
+            const foodCenterX = food.x + gridSize / 2;
+            const foodCenterY = food.y + gridSize / 2;
+            
+            const distance = Math.sqrt(
+                Math.pow(headCenterX - foodCenterX, 2) + 
+                Math.pow(headCenterY - foodCenterY, 2)
+            );
+            
             // 检查是否吃到食物
-            if (head.x === food.x && head.y === food.y) {
+            if (distance < foodRadius + (gridSize / 2 - 2)) {
                 score += 10;
                 scoreElement.textContent = score;
                 
@@ -932,6 +1024,10 @@
             touchStartY = e.touches[0].clientY;
         }
         
+        function handleTouchMove(e) {
+            e.preventDefault(); // 阻止默认的触摸行为
+        }
+        
         function handleTouchEnd(e) {
             e.preventDefault(); // 阻止默认的触摸行为
             
@@ -973,6 +1069,7 @@
         // --- 事件监听器 ---
         document.addEventListener('keydown', handleKeyPress);
         canvas.addEventListener('touchstart', handleTouchStart, { passive: false }); // passive: false 允许 preventDefault
+        canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
         canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
         startBtn.addEventListener('click', startGame);
         restartBtn.addEventListener('click', initGame);
@@ -1006,7 +1103,25 @@
             wechatModal.classList.remove('active');
         });
         
-        // 虚拟方向键事件
+        // 虚拟方向键事件 - 使用touchstart提高响应速度
+        upBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleVirtualDirection('up');
+        });
+        downBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleVirtualDirection('down');
+        });
+        leftBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleVirtualDirection('left');
+        });
+        rightBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleVirtualDirection('right');
+        });
+        
+        // 也保留click事件以兼容某些设备
         upBtn.addEventListener('click', () => handleVirtualDirection('up'));
         downBtn.addEventListener('click', () => handleVirtualDirection('down'));
         leftBtn.addEventListener('click', () => handleVirtualDirection('left'));
@@ -1068,13 +1183,14 @@
         }, 250); // 250ms 防抖
         
         window.addEventListener('resize', debouncedResize);
+        window.addEventListener('orientationchange', debouncedResize);
         
         // --- 初始启动 ---
         setupCanvas();
         initGame();
         
         // 确保难度按钮的初始状态正确显示
-        document.querySelector('.difficulty-btn[data-speed="150"]').classList.add('active');
+        document.querySelector('.difficulty-btn[data-speed="200"]').classList.add('active');
     </script>
 </body>
 </html>
