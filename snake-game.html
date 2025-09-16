@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>贪吃蛇小游戏</title>
     <!-- 引入Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -69,6 +69,8 @@
         
         body {
             touch-action: manipulation; /* 防止双击缩放 */
+            margin: 0;
+            overflow: hidden;
         }
         
         #gameCanvas {
@@ -531,8 +533,7 @@
             canvas.height = canvasSize;
             
             // 调整网格大小以确保画布被均匀分割
-            const maxGridCount = Math.floor(canvasSize / 20);
-            gridSize = canvasSize / maxGridCount;
+            gridSize = canvasSize / 20; // 固定20个网格
         }
         
         // 初始化游戏
@@ -1066,6 +1067,7 @@
         });
         
         // 初始化游戏
+        let canvasSize, gridSize;
         setupCanvas();
         initGame();
     </script>
