@@ -167,7 +167,7 @@
                 display: grid;
                 grid-template-columns: repeat(3, auto);
                 grid-template-rows: repeat(3, auto);
-                gap: 15px;
+                gap: 10px;
                 justify-content: center;
                 align-items: center;
             }
@@ -191,13 +191,6 @@
             transform: scale(0.95);
             background: #d1d5db;
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
-        
-        /* 音乐控制样式 */
-        .music-control {
-            display: flex;
-            align-items: center;
-            gap: 5px;
         }
     </style>
 </head>
@@ -238,9 +231,6 @@
                 <button id="restartBtn" class="bg-snake-primary hover:bg-snake-secondary text-white px-4 py-2 rounded-lg shadow-md btn-bounce">
                     <i class="fa fa-refresh mr-1"></i> 重启
                 </button>
-                <button id="musicBtn" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg shadow-md btn-bounce music-control">
-                    <i class="fa fa-music mr-1"></i> 音乐
-                </button>
             </div>
         </div>
         
@@ -275,19 +265,26 @@
         </div>
         
         <!-- 虚拟方向键 (仅在手机上显示) -->
-        <div id="virtualDirectionKeys" class="hidden md:grid md:grid-cols-3 md:grid-rows-3 md:gap-4">
+        <div id="virtualDirectionKeys" class="hidden md:grid md:grid-cols-3 md:grid-rows-3 md:gap-2">
+            <div></div>
             <button class="direction-btn md:col-start-2 md:row-start-1" id="upBtn">
                 <i class="fa fa-arrow-up"></i>
             </button>
+            <div></div>
+            
             <button class="direction-btn md:col-start-1 md:row-start-2" id="leftBtn">
                 <i class="fa fa-arrow-left"></i>
             </button>
+            <div></div>
             <button class="direction-btn md:col-start-3 md:row-start-2" id="rightBtn">
                 <i class="fa fa-arrow-right"></i>
             </button>
+            
+            <div></div>
             <button class="direction-btn md:col-start-2 md:row-start-3" id="downBtn">
                 <i class="fa fa-arrow-down"></i>
             </button>
+            <div></div>
         </div>
         
         <!-- 难度选择 -->
@@ -445,8 +442,6 @@
         let isGameOver = false;
         let isPaused = false;
         let gameStarted = false;
-        let musicPlaying = false;
-        let gameMusic;
         
         // 皮肤系统
         let currentSkin = 'classic';
@@ -506,7 +501,6 @@
         const applySkinBtn = document.getElementById('applySkinBtn');
         const skinPreviews = document.querySelectorAll('.skin-preview');
         const qrcodeImage = document.getElementById('qrcodeImage');
-        const musicBtn = document.getElementById('musicBtn');
         const upBtn = document.getElementById('upBtn');
         const downBtn = document.getElementById('downBtn');
         const leftBtn = document.getElementById('leftBtn');
@@ -514,38 +508,6 @@
         
         // 初始化高分
         highScoreElement.textContent = highScore;
-        
-        // 创建游戏音乐
-        function initMusic() {
-            try {
-                gameMusic = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-game-level-music-224.mp3');
-                gameMusic.loop = true;
-                gameMusic.onerror = function() {
-                    console.error('音频加载失败，请检查网络连接');
-                    musicBtn.innerHTML = '<i class="fa fa-music mr-1"></i> 音乐(加载失败)';
-                };
-                
-                // 音乐按钮点击事件
-                musicBtn.addEventListener('click', () => {
-                    if (musicPlaying) {
-                        gameMusic.pause();
-                        musicPlaying = false;
-                        musicBtn.innerHTML = '<i class="fa fa-music mr-1"></i> 音乐';
-                    } else {
-                        // 音频需要用户交互才能播放
-                        gameMusic.play().then(() => {
-                            musicPlaying = true;
-                            musicBtn.innerHTML = '<i class="fa fa-music mr-1"></i> 关闭音乐';
-                        }).catch(() => {
-                            console.error('音频播放失败，请检查浏览器设置');
-                            musicBtn.innerHTML = '<i class="fa fa-music mr-1"></i> 音乐(播放失败)';
-                        });
-                    }
-                });
-            } catch (e) {
-                console.error('初始化音乐失败:', e);
-            }
-        }
         
         // 生成二维码
         qrcodeScript.onload = function() {
@@ -831,13 +793,6 @@
             pauseBtn.classList.remove('hidden');
             resumeBtn.classList.add('hidden');
             
-            // 如果音乐开启，开始播放
-            if (musicPlaying) {
-                gameMusic.play().catch(() => {
-                    console.log('音乐播放失败，可能需要用户交互');
-                });
-            }
-            
             // 启动游戏循环
             gameInterval = setInterval(update, gameSpeed);
         }
@@ -1109,9 +1064,6 @@
                 resumeGame();
             }
         });
-        
-        // 初始化音乐
-        initMusic();
         
         // 初始化游戏
         setupCanvas();
